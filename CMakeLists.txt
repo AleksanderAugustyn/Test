@@ -17,7 +17,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS}")
 # Print ROOT version
 message(STATUS "ROOT version: ${ROOT_VERSION}")
 
-add_executable(Test main.cpp)
+add_executable(Test main.cpp
+        main.h
+        ROOTFileReader.cpp
+        ROOTFileReader.h
+)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2")
 
