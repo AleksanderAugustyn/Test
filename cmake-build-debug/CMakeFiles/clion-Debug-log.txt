@@ -1,0 +1,22 @@
+/home/aaugustyn/.cache/JetBrains/RemoteDev/dist/ca3b16cae6280_CLion-243.21565.87/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/aaugustyn/.cache/JetBrains/RemoteDev/dist/ca3b16cae6280_CLion-243.21565.87/bin/ninja/linux/x64/ninja -G Ninja -S /home/aaugustyn/CLionProjects/Test -B /home/aaugustyn/CLionProjects/Test/cmake-build-debug
+CMake Warning at /usr/share/root/cmake/ROOTConfig-targets.cmake:1563 (message):
+  The imported target "ROOT::rootnb.exe" references the file
+
+     "/usr/bin/rootnb.exe"
+
+  but this file does not exist.
+
+  If this target is used you need to install the package that provides this
+
+  file using "dnf install".
+
+  If this target is not used this warning can be ignored.
+Call Stack (most recent call first):
+  /usr/share/root/cmake/ROOTConfig.cmake:113 (include)
+  CMakeLists.txt:8 (find_package)
+
+
+-- ROOT version: 6.32.02
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/aaugustyn/CLionProjects/Test/cmake-build-debug
