@@ -11,7 +11,7 @@ int main()
     {
         LoadRequiredLibraries();
 
-        TFile* InputFile = OpenRootFile("pixie_bigrips_traces_119_35.root");
+        TFile* InputFile = OpenRootFile("pixie_bigrips_traces_055_24.root");
         TTree* Tree = GetTree(InputFile, "pspmt");
 
         // Create output directory

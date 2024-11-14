@@ -91,7 +91,7 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     // Find peak and estimate rise time
     Double_t RiseStartX = 0;
     Bool_t RiseStartFound = false;
-    const Double_t RiseThreshold = BaselineValue + 3 * BaselineRMS;
+    const Double_t RiseThreshold = BaselineValue + 5 * BaselineRMS;
 
     for (Int_t i = 0; i < TraceGraph->GetN(); i++)
     {
@@ -139,14 +139,14 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     FitFunc->SetParameter(1, MaxX);                  // Peak position
     FitFunc->SetParameter(2, EstimatedDecayConstant);// Decay constant
     FitFunc->SetParameter(3, EstimatedRiseTime);     // Rise time constant
-    FitFunc->SetParameter(4, 1.5);                   // Rise time power (start between linear and quadratic)
+    FitFunc->SetParameter(4, 2.0);                   // Rise time power (start between linear and quadratic)
     FitFunc->SetParameter(5, BaselineValue);         // Baseline
 
     // Set parameter limits
     FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 1.5 * (MaxY - BaselineValue));  // Amplitude
-    FitFunc->SetParLimits(1, MaxX - 50, MaxX + 50);        // Peak position
-    FitFunc->SetParLimits(2, 1, 500);                     // Decay constant (reasonable range for PMT)
-    FitFunc->SetParLimits(3, 1, 100);                       // Rise time constant
+    FitFunc->SetParLimits(1, MaxX - 25, MaxX + 25);        // Peak position
+    FitFunc->SetParLimits(2, 1, 100);                     // Decay constant (reasonable range for PMT)
+    FitFunc->SetParLimits(3, 1, 50);                       // Rise time constant
     FitFunc->SetParLimits(4, 1.0, 4.0);                    // Rise time power
     FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);  // Baseline
 
