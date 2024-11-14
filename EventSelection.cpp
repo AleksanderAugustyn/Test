@@ -169,34 +169,3 @@ std::vector<Long64_t> GetAllQualifyingEvents(TTree* TreeInput)
     return QualifyingEvents;
 }
 
-void GraphFirstNEvents(TTree* TreeInput, const std::vector<Long64_t>& QualifyingEvents,
-    const Long64_t NumberOfEvents, const char* OutputPath)
-{
-    if (!TreeInput)
-    {
-        throw std::runtime_error("Invalid tree pointer");
-    }
-
-    if (NumberOfEvents <= 0)
-    {
-        throw std::runtime_error("Number of events must be positive");
-    }
-
-    if (QualifyingEvents.empty())
-    {
-        std::cout << "No qualifying events to process" << std::endl;
-        return;
-    }
-
-    const Long64_t EventsToProcess = std::min(static_cast<Long64_t>(QualifyingEvents.size()),
-        NumberOfEvents);
-
-    // std::cout << "Processing first " << EventsToProcess << " qualifying events..." << std::endl;
-
-    for (Long64_t i = 0; i < EventsToProcess; i++)
-    {
-        std::cout << "Processing event " << QualifyingEvents[i] << " ("
-            << i + 1 << "/" << EventsToProcess << ")" << std::endl;
-        SaveTraceGraphsWithFit(TreeInput, QualifyingEvents[i], OutputPath);
-    }
-}

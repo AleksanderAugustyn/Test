@@ -45,8 +45,8 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
         throw std::runtime_error("Invalid graph pointer");
     }
 
-    std::cout << "\nFitting trace: " << TraceGraph->GetTitle() << std::endl;
-    std::cout << "Fit range: [" << FitRangeStart << ", " << FitRangeEnd << "]" << std::endl;
+    // std::cout << "\nFitting trace: " << TraceGraph->GetTitle() << std::endl;
+    // std::cout << "Fit range: [" << FitRangeStart << ", " << FitRangeEnd << "]" << std::endl;
 
     // Create the fit function
     static int FitCounter = 0;
@@ -128,11 +128,11 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     const Double_t EstimatedDecayConstant = DecayEndX - MaxX;
     const Double_t EstimatedRiseTime = MaxX - RiseStartX;
 
-    std::cout << "Initial parameter estimation:" << std::endl;
-    std::cout << "  Max amplitude: " << MaxY - BaselineValue << " at position: " << MaxX << std::endl;
-    std::cout << "  Baseline: " << BaselineValue << " ± " << BaselineRMS << std::endl;
-    std::cout << "  Estimated rise time: " << EstimatedRiseTime << std::endl;
-    std::cout << "  Estimated decay constant: " << EstimatedDecayConstant << std::endl;
+    // std::cout << "Initial parameter estimation:" << std::endl;
+    // std::cout << "  Max amplitude: " << MaxY - BaselineValue << " at position: " << MaxX << std::endl;
+    // std::cout << "  Baseline: " << BaselineValue << " ± " << BaselineRMS << std::endl;
+    // std::cout << "  Estimated rise time: " << EstimatedRiseTime << std::endl;
+    // std::cout << "  Estimated decay constant: " << EstimatedDecayConstant << std::endl;
 
     // Set initial parameters with improved estimates
     FitFunc->SetParameter(0, MaxY - BaselineValue);  // Amplitude
@@ -151,10 +151,10 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);  // Baseline
 
     // Perform the fit
-    const Int_t FitStatus = TraceGraph->Fit(FitFunc, "QR");  // Q: quiet, R: use range
+    [[maybe_unused]] const Int_t FitStatus = TraceGraph->Fit(FitFunc, "QR");  // Q: quiet, R: use range
 
-    // Print fit results
-    std::cout << "Fit status: " << FitStatus << " (0 = success)" << std::endl;
+    /*// Print fit results
+     std::cout << "Fit status: " << FitStatus << " (0 = success)" << std::endl;
     std::cout << "Fitted parameters:" << std::endl;
     for (Int_t i = 0; i < FitFunc->GetNpar(); i++)
     {
@@ -170,7 +170,7 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     std::cout << "Fit quality:" << std::endl;
     std::cout << " Chi-square: " << ChiSquare << std::endl;
     std::cout << " NDF: " << NDF << std::endl;
-    std::cout << " Reduced chi-square: " << RedChiSquare << std::endl;
+    std::cout << " Reduced chi-square: " << RedChiSquare << std::endl;*/
 
     // Set fit function style
     FitFunc->SetLineColor(kRed);

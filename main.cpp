@@ -11,18 +11,21 @@ int main()
     {
         LoadRequiredLibraries();
 
-        TFile* InputFile = OpenRootFile("pixie_bigrips_traces_055_24.root");
+        std::string InputFileName  = "pixie_bigrips_traces_055_24.root";
+
+        TFile* InputFile = OpenRootFile(InputFileName.c_str());
         TTree* Tree = GetTree(InputFile, "pspmt");
 
-        // Create output directory
-        gSystem->Exec("mkdir -p traces");
+        // Extract run numbers and create trace directory
+        const auto RunNumbers = ExtractRunNumbers(InputFileName);
+        const std::string OutputDirectory = CreateTraceDirectory(RunNumbers);
 
         // Get all qualifying events
         const std::vector<Long64_t> QualifyingEvents = GetAllQualifyingEvents(Tree);
 
         // Graph first N events
-        constexpr Long64_t NumberOfEventsToProcess = 10;
-        GraphFirstNEvents(Tree, QualifyingEvents, NumberOfEventsToProcess, "traces");
+        constexpr Long64_t NumberOfEventsToProcess = 100;
+        GraphFirstNEvents(Tree, QualifyingEvents, NumberOfEventsToProcess,  OutputDirectory.c_str());
 
         InputFile->Close();
         delete InputFile;
