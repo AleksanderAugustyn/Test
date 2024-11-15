@@ -21,7 +21,7 @@
 
 #include "main.h"
 
-void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePath)
+void SaveTraceGraphs(TTree *TreeInput, const Long64_t Entry, const char *ImagePath)
 {
     if (!MeetsSelectionCriteria(TreeInput, Entry))
     {
@@ -29,7 +29,7 @@ void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePa
     }
 
     // Define the channels we want to plot and their titles
-    const std::map<Int_t, std::pair<std::string, std::string>> ChannelMap = {
+    const std::map<Int_t, std::pair<std::string, std::string> > ChannelMap = {
         {4, {"xa", "X Anode A Signal"}},
         {7, {"xb", "X Anode B Signal"}},
         {6, {"ya", "Y Anode A Signal"}},
@@ -42,19 +42,19 @@ void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePa
     Reader.SetEntry(Entry);
 
     // Store graphs for each channel type
-    std::map<std::string, TGraph*> TraceGraphs;
+    std::map<std::string, TGraph *> TraceGraphs;
 
     // Set global style parameters
-    gStyle->SetTextSize(0.2);    // Increase default text size
-    gStyle->SetLabelSize(0.1);   // Increase axis label size
-    gStyle->SetTitleSize(2.5);   // Increase title size
+    gStyle->SetTextSize(0.2); // Increase default text size
+    gStyle->SetLabelSize(0.1); // Increase axis label size
+    gStyle->SetTitleSize(2.5); // Increase title size
     //gStyle-> SetTitleFontSize(18); // Increase title font size
 
     if (RootDevVector.GetSize() > 0)
     {
         for (UInt_t DeviceIndex = 0; DeviceIndex < RootDevVector.GetSize(); DeviceIndex++)
         {
-            const auto& Device = RootDevVector.At(DeviceIndex);
+            const auto &Device = RootDevVector.At(DeviceIndex);
 
             if (!Device.hasValidTimingAnalysis || !Device.hasValidWaveformAnalysis)
             {
@@ -75,7 +75,7 @@ void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePa
                 if (auto ChannelIter = ChannelMap.find(Device.chanNum); ChannelIter != ChannelMap.end())
                 {
                     const auto TraceGraph = CreateTraceGraph(Device,
-                        ChannelIter->second.second, static_cast<Int_t>(DeviceIndex));
+                                                             ChannelIter->second.second, static_cast<Int_t>(DeviceIndex));
                     TraceGraphs[ChannelIter->second.first] = TraceGraph;
                 }
             }
@@ -83,11 +83,11 @@ void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePa
     }
 
     // Only proceed if we have all required traces
-    if (TraceGraphs.size() == 5)  // 4 anodes + 1 dynode
+    if (TraceGraphs.size() == 5) // 4 anodes + 1 dynode
     {
         // Create larger canvas with higher DPI
         // Set higher resolution for saved images
-        gStyle->SetImageScaling(3.0);  // Increase image resolution
+        gStyle->SetImageScaling(3.0); // Increase image resolution
 
         const auto CombinedCanvas = new TCanvas("AllTraces", "All Traces", 1600, 1000);
         CombinedCanvas->Divide(1, 5);
@@ -109,15 +109,15 @@ void SaveTraceGraphs(TTree* TreeInput, const Long64_t Entry, const char* ImagePa
 
         // Cleanup
         delete CombinedCanvas;
-        for (auto& [Key, Graph] : TraceGraphs)
+        for (auto &[Key, Graph]: TraceGraphs)
         {
             delete Graph;
         }
     }
 }
 
-TGraph* CreateTraceGraph(const processor_struct::ROOTDEV& Device,
-    const std::string& Title, const Int_t DeviceIndex)
+TGraph *CreateTraceGraph(const processor_struct::ROOTDEV &Device,
+                         const std::string &Title, const Int_t DeviceIndex)
 {
     const auto PointCount = static_cast<Int_t>(Device.trace.size());
     const auto TraceGraph = new TGraph(PointCount);
@@ -129,10 +129,10 @@ TGraph* CreateTraceGraph(const processor_struct::ROOTDEV& Device,
 
     // Enhanced appearance
     TraceGraph->SetMarkerStyle(8);
-    TraceGraph->SetMarkerSize(1.0);    // Increased marker size
+    TraceGraph->SetMarkerSize(1.0); // Increased marker size
     TraceGraph->SetMarkerColor(kBlue);
     TraceGraph->SetLineColor(kBlue);
-    TraceGraph->SetLineWidth(2);        // Thicker lines
+    TraceGraph->SetLineWidth(2); // Thicker lines
 
     // Set axis titles with larger font
     TraceGraph->GetXaxis()->SetTitle("Time [ns]");
@@ -156,14 +156,14 @@ TGraph* CreateTraceGraph(const processor_struct::ROOTDEV& Device,
  * @param Entry Entry number to process
  * @param ImagePath Path to save the output images
  */
-void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* ImagePath)
+void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *ImagePath)
 {
     if (!MeetsSelectionCriteria(TreeInput, Entry))
     {
         return;
     }
 
-    const std::map<Int_t, std::pair<std::string, std::string>> ChannelMap = {
+    const std::map<Int_t, std::pair<std::string, std::string> > ChannelMap = {
         {4, {"xa", "X Anode A Signal"}},
         {7, {"xb", "X Anode B Signal"}},
         {6, {"ya", "Y Anode A Signal"}},
@@ -177,12 +177,12 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
     TTreeReaderArray<processor_struct::ROOTDEV> RootDevVector = {Reader, "rootdev_vec_"};
     Reader.SetEntry(Entry);
 
-    // Print position information
+    /*// Print position information
     std::cout << "\nEvent " << Entry << " Position Information:" << std::endl;
-    std::cout << "High Gain Position: X = "<< std::fixed << std::setprecision(5) << *HighGainPosX << ", Y = " << *HighGainPosY << std::endl;
+    std::cout << "High Gain Position: X = " << std::fixed << std::setprecision(5) << *HighGainPosX << ", Y = " << *HighGainPosY << std::endl;*/
 
-    std::map<std::string, TGraph*> TraceGraphs;
-    std::vector<TF1*> FitFunctions;
+    std::map<std::string, TGraph *> TraceGraphs;
+    std::vector<TF1 *> FitFunctions;
 
     // Global style settings
     gStyle->SetOptTitle(1);
@@ -199,14 +199,14 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
 
     if (RootDevVector.GetSize() > 0)
     {
-        std::map<std::string, std::vector<Double_t>> FitParameters;
+        /*std::map<std::string, std::vector<Double_t> > FitParameters;
         std::cout << "\nFit Parameters:" << std::endl;
         std::cout << "Channel\tAmplitude\tPosition\tDecay(τ1)\tRise(τ2)\tPower\tBaseline" << std::endl;
-        std::cout << "------------------------------------------------------------------------" << std::endl;
+        std::cout << "------------------------------------------------------------------------" << std::endl;*/
 
         for (UInt_t DeviceIndex = 0; DeviceIndex < RootDevVector.GetSize(); DeviceIndex++)
         {
-            const auto& Device = RootDevVector.At(DeviceIndex);
+            const auto &Device = RootDevVector.At(DeviceIndex);
 
             if (!Device.hasValidTimingAnalysis || !Device.hasValidWaveformAnalysis)
             {
@@ -217,7 +217,58 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
             {
                 const auto TraceGraph = CreateTraceGraph(Device, "Dynode High Signal", static_cast<Int_t>(DeviceIndex));
                 TraceGraphs["dynode"] = TraceGraph;
-                continue;
+
+                try
+                {
+                    /*// Print header for dynode fit parameters
+                    std::cout << "\nDynode Signal Fit Parameters:" << std::endl;
+                    std::cout << "-------------------------------------------------------------" << std::endl;
+                    std::cout << "Parameter           Value           Error" << std::endl;
+                    std::cout << "-------------------------------------------------------------" << std::endl;*/
+
+                    TF1 *DynodeFitResult = FitDynodePeak(TraceGraph, 0, TraceGraph->GetN());
+                    DynodeFitResult->SetLineColor(kRed);
+                    DynodeFitResult->SetLineWidth(3);
+                    DynodeFitResult->SetNpx(2000);
+                    FitFunctions.push_back(DynodeFitResult);
+
+                    /*// Store and print fit parameters with formatting
+                    const char *ParamNames[] = {
+                        "Amplitude", "Peak Position", "Fast Decay τ1", "Slow Decay τ2",
+                        "Rise Time τr", "Undershoot Amp", "Undershoot τu", "Fast Fraction",
+                        "Baseline"
+                    };
+
+                    for (Int_t i = 0; i < DynodeFitResult->GetNpar(); i++)
+                    {
+                        const Double_t Value = DynodeFitResult->GetParameter(i);
+                        const Double_t Error = DynodeFitResult->GetParError(i);
+
+                        std::cout << std::left << std::setw(18) << ParamNames[i]
+                                << std::fixed << std::setprecision(3)
+                                << std::setw(15) << Value
+                                << " ± " << std::setw(10) << Error << std::endl;
+                    }*/
+
+                    /*// Calculate and print fit quality metrics
+                    const Double_t ChiSquare = DynodeFitResult->GetChisquare();
+                    const Int_t NDF = DynodeFitResult->GetNDF();
+                    const Double_t RedChiSquare = ChiSquare / NDF;
+
+                    std::cout << "\nFit Quality Metrics:" << std::endl;
+                    std::cout << "Chi-square: " << std::fixed << std::setprecision(2) << ChiSquare << std::endl;
+                    std::cout << "NDF: " << NDF << std::endl;
+                    std::cout << "Reduced chi-square: " << std::fixed << std::setprecision(3) << RedChiSquare << std::endl;*/
+
+                    // Add statistics box to the plot
+                    gStyle->SetOptFit(1); // Show fit statistics on plot
+                    gStyle->SetStatX(0.9);
+                    gStyle->SetStatY(0.9);
+                }
+                catch (const std::exception &Error)
+                {
+                    std::cerr << "Dynode fitting error: " << Error.what() << std::endl;
+                }
             }
 
             if (Device.subtype == "anode_high")
@@ -229,13 +280,13 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
 
                     try
                     {
-                        TF1* FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN());
+                        TF1 *FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN());
                         FitResult->SetLineColor(kRed);
                         FitResult->SetLineWidth(5);
                         FitResult->SetNpx(2000);
                         FitFunctions.push_back(FitResult);
 
-                        // Store fit parameters
+                        /*// Store fit parameters
                         std::vector<Double_t> Params;
                         Params.reserve(FitResult->GetNpar());
                         for (Int_t i = 0; i < FitResult->GetNpar(); i++)
@@ -245,16 +296,16 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
                         FitParameters[ChannelIter->second.first] = Params;
 
                         // Print fit parameters
-                        std::cout << std::fixed << std::setprecision(2)
+                        std::cout << std::fixed << std::setprecision(5)
                                 << ChannelIter->second.first << "\t"
-                                << FitResult->GetParameter(0) << "\t\t"  // Amplitude
-                                << FitResult->GetParameter(1) << "\t\t"  // Peak Position
-                                << FitResult->GetParameter(2) << "\t\t"  // Decay Time (τ1)
-                                << FitResult->GetParameter(3) << "\t\t"  // Rise Time (τ2)
-                                << FitResult->GetParameter(4) << "\t"    // Rise Time Power
-                                << FitResult->GetParameter(5) << std::endl;  // Baseline
+                                << FitResult->GetParameter(0) << "\t\t" // Amplitude
+                                << FitResult->GetParameter(1) << "\t\t" // Peak Position
+                                << FitResult->GetParameter(2) << "\t\t" // Decay Time (τ1)
+                                << FitResult->GetParameter(3) << "\t\t" // Rise Time (τ2)
+                                << FitResult->GetParameter(4) << "\t" // Rise Time Power
+                                << FitResult->GetParameter(5) << std::endl; // Baseline*/
                     }
-                    catch (const std::exception& Error)
+                    catch (const std::exception &Error)
                     {
                         std::cerr << "Fitting error for " << ChannelIter->second.first
                                 << ": " << Error.what() << std::endl;
@@ -302,7 +353,7 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
 
             if (PlotOrder[i] != "dynode")
             {
-                for (const auto FitFunc : FitFunctions)
+                for (const auto FitFunc: FitFunctions)
                 {
                     if (TString(FitFunc->GetName()).Contains(PlotOrder[i]))
                     {
@@ -319,19 +370,19 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, const Long64_t Entry, const char* 
         CombinedCanvas->SaveAs(CombinedPngName);
 
         delete CombinedCanvas;
-        for (auto& [Key, Graph] : TraceGraphs)
+        for (auto &[Key, Graph]: TraceGraphs)
         {
             delete Graph;
         }
-        for (const auto& FitFunc : FitFunctions)
+        for (const auto &FitFunc: FitFunctions)
         {
             delete FitFunc;
         }
     }
 }
 
-void GraphFirstNEvents(TTree* TreeInput, const std::vector<Long64_t>& QualifyingEvents,
-    const Long64_t NumberOfEvents, const char* OutputPath)
+void GraphFirstNEvents(TTree *TreeInput, const std::vector<Long64_t> &QualifyingEvents,
+                       const Long64_t NumberOfEvents, const char *OutputPath)
 {
     if (!TreeInput)
     {
@@ -349,14 +400,14 @@ void GraphFirstNEvents(TTree* TreeInput, const std::vector<Long64_t>& Qualifying
     }
 
     const Long64_t EventsToProcess = std::min(static_cast<Long64_t>(QualifyingEvents.size()),
-        NumberOfEvents);
+                                              NumberOfEvents);
 
     // std::cout << "Processing first " << EventsToProcess << " qualifying events..." << std::endl;
 
     for (Long64_t i = 0; i < EventsToProcess; i++)
     {
         std::cout << "Processing event " << QualifyingEvents[i] << " ("
-            << i + 1 << "/" << EventsToProcess << ")" << std::endl;
+                << i + 1 << "/" << EventsToProcess << ")" << std::endl;
         SaveTraceGraphsWithFit(TreeInput, QualifyingEvents[i], OutputPath);
     }
 }

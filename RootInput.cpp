@@ -1,7 +1,6 @@
 #include <iomanip>
 #include <regex>
 
-#include <TROOT.h>
 #include <TFile.h>
 #include <TTreeReader.h>
 #include <TSystem.h>
@@ -113,7 +112,7 @@ std::pair<Int_t, Int_t> ExtractRunNumbers(const std::string& FileName)
     }
     catch (const std::exception& Error)
     {
-        throw std::runtime_error("Failed to convert extracted numbers to integers");
+        throw std::runtime_error("Failed to convert extracted numbers to integers: " + std::string(Error.what()));
     }
 }
 

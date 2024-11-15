@@ -25,5 +25,7 @@ void SaveTraceGraphsWithFit(TTree* TreeInput, Long64_t Entry, const char* ImageP
 void GraphFirstNEvents(TTree* TreeInput, const std::vector<Long64_t>& QualifyingEvents, Long64_t NumberOfEvents, const char* OutputPath);
 
 // FitAnalysis
-Double_t PeakFunction(const Double_t* X, const Double_t* Parameters);
+Double_t AnodePeakFunction(const Double_t* X, const Double_t* Parameters);
 TF1* FitPeakToTrace(TGraph* TraceGraph, Double_t FitRangeStart, Double_t FitRangeEnd);
+Double_t DynodePeakFunction(const Double_t* X, const Double_t* Parameters);
+TF1* FitDynodePeak(TGraph* TraceGraph, Double_t FitRangeStart, Double_t FitRangeEnd);
