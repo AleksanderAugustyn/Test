@@ -22,7 +22,8 @@ add_executable(Test main.cpp
         EventSelection.cpp
         main.h
         RootInput.cpp
-        FitAnalysis.cpp)
+        FitAnalysis.cpp
+        AnalyseTraces.cpp)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O2")
 

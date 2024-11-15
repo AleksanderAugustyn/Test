@@ -84,6 +84,13 @@ build CMakeFiles/Test.dir/FitAnalysis.cpp.o: CXX_COMPILER__Test_unscanned_Debug 
   OBJECT_DIR = CMakeFiles/Test.dir
   OBJECT_FILE_DIR = CMakeFiles/Test.dir
 
+build CMakeFiles/Test.dir/AnalyseTraces.cpp.o: CXX_COMPILER__Test_unscanned_Debug /home/aaugustyn/CLionProjects/Test/AnalyseTraces.cpp || cmake_object_order_depends_target_Test
+  DEP_FILE = CMakeFiles/Test.dir/AnalyseTraces.cpp.o.d
+  FLAGS = -O2  -fexceptions -g -grecord-gcc-switches -pipe -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -pipe -fsigned-char -pthread -O2  -fexceptions -g -grecord-gcc-switches -pipe -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -pipe -fsigned-char -pthread -Wall -Wextra -Werror -O2 -g -fdiagnostics-color=always   -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS
+  INCLUDES = -I/usr/include/root
+  OBJECT_DIR = CMakeFiles/Test.dir
+  OBJECT_FILE_DIR = CMakeFiles/Test.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target Test
@@ -92,7 +99,7 @@ build CMakeFiles/Test.dir/FitAnalysis.cpp.o: CXX_COMPILER__Test_unscanned_Debug 
 #############################################
 # Link the executable Test
 
-build Test: CXX_EXECUTABLE_LINKER__Test_Debug CMakeFiles/Test.dir/main.cpp.o CMakeFiles/Test.dir/TraceGraphs.cpp.o CMakeFiles/Test.dir/EventSelection.cpp.o CMakeFiles/Test.dir/RootInput.cpp.o CMakeFiles/Test.dir/FitAnalysis.cpp.o | /usr/lib64/root/libCore.so /usr/lib64/root/libImt.so /usr/lib64/root/libRIO.so /usr/lib64/root/libNet.so /usr/lib64/root/libHist.so /usr/lib64/root/libGraf.so /usr/lib64/root/libGraf3d.so /usr/lib64/root/libGpad.so /usr/lib64/root/libROOTDataFrame.so /usr/lib64/root/libTree.so /usr/lib64/root/libTreePlayer.so /usr/lib64/root/libRint.so /usr/lib64/root/libPostscript.so /usr/lib64/root/libMatrix.so /usr/lib64/root/libPhysics.so /usr/lib64/root/libMathCore.so /usr/lib64/root/libThread.so /usr/lib64/root/libMultiProc.so /usr/lib64/root/libROOTVecOps.so
+build Test: CXX_EXECUTABLE_LINKER__Test_Debug CMakeFiles/Test.dir/main.cpp.o CMakeFiles/Test.dir/TraceGraphs.cpp.o CMakeFiles/Test.dir/EventSelection.cpp.o CMakeFiles/Test.dir/RootInput.cpp.o CMakeFiles/Test.dir/FitAnalysis.cpp.o CMakeFiles/Test.dir/AnalyseTraces.cpp.o | /usr/lib64/root/libCore.so /usr/lib64/root/libImt.so /usr/lib64/root/libRIO.so /usr/lib64/root/libNet.so /usr/lib64/root/libHist.so /usr/lib64/root/libGraf.so /usr/lib64/root/libGraf3d.so /usr/lib64/root/libGpad.so /usr/lib64/root/libROOTDataFrame.so /usr/lib64/root/libTree.so /usr/lib64/root/libTreePlayer.so /usr/lib64/root/libRint.so /usr/lib64/root/libPostscript.so /usr/lib64/root/libMatrix.so /usr/lib64/root/libPhysics.so /usr/lib64/root/libMathCore.so /usr/lib64/root/libThread.so /usr/lib64/root/libMultiProc.so /usr/lib64/root/libROOTVecOps.so
   FLAGS = -O2  -fexceptions -g -grecord-gcc-switches -pipe -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -pipe -fsigned-char -pthread -O2  -fexceptions -g -grecord-gcc-switches -pipe -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -fstack-protector-strong -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1  -m64 -march=x86-64-v2 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -pipe -fsigned-char -pthread -Wall -Wextra -Werror -O2 -g
   LINK_LIBRARIES = -Wl,-rpath,/usr/lib64/root  /usr/lib64/root/libCore.so  /usr/lib64/root/libImt.so  /usr/lib64/root/libRIO.so  /usr/lib64/root/libNet.so  /usr/lib64/root/libHist.so  /usr/lib64/root/libGraf.so  /usr/lib64/root/libGraf3d.so  /usr/lib64/root/libGpad.so  /usr/lib64/root/libROOTDataFrame.so  /usr/lib64/root/libTree.so  /usr/lib64/root/libTreePlayer.so  /usr/lib64/root/libRint.so  /usr/lib64/root/libPostscript.so  /usr/lib64/root/libMatrix.so  /usr/lib64/root/libPhysics.so  /usr/lib64/root/libMathCore.so  /usr/lib64/root/libThread.so  /usr/lib64/root/libMultiProc.so  /usr/lib64/root/libROOTVecOps.so
   LINK_PATH = -L/usr/lib64/root

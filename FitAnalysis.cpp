@@ -149,8 +149,8 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     // Set parameter limits
     FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 1.2 * MaxY);  // 2.0 * (MaxY - BaselineValue));  // Amplitude
     FitFunc->SetParLimits(1, MaxX - 30, MaxX + 30);        // Peak position
-    FitFunc->SetParLimits(2, 1, 100);                     // Decay constant (reasonable range for PMT)
-    FitFunc->SetParLimits(3, 1, 50);                       // Rise time constant
+    FitFunc->SetParLimits(2, 1, 200);                     // Decay constant (reasonable range for PMT)
+    FitFunc->SetParLimits(3, 1, 100);                       // Rise time constant
     FitFunc->SetParLimits(4, 1.0, 4.0);                    // Rise time power
     FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);  // Baseline
 
@@ -284,7 +284,7 @@ TF1* FitDynodePeak(TGraph* TraceGraph, const Double_t FitRangeStart, const Doubl
     // Estimate undershoot
     Double_t MinAfterPeak = 1e9;
     [[maybe_unused]] Double_t MinAfterPeakX = 0;
-    for (Int_t i = static_cast<Int_t>(MaxX + 100); i < TraceGraph->GetN(); i++)
+    for (auto i = static_cast<Int_t>(MaxX + 100); i < TraceGraph->GetN(); i++)
     {
         Double_t X, Y;
         TraceGraph->GetPoint(i, X, Y);

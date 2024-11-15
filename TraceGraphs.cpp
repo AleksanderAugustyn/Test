@@ -411,3 +411,224 @@ void GraphFirstNEvents(TTree *TreeInput, const std::vector<Long64_t> &Qualifying
         SaveTraceGraphsWithFit(TreeInput, QualifyingEvents[i], OutputPath);
     }
 }
+
+/**
+ * Extracts fit parameters from an anode fit function
+ * @param FitFunc Pointer to the fitted function
+ * @return Optional channel fit parameters
+ */
+std::optional<AnalysisResults::ChannelFit> ExtractAnodeFitParameters(const TF1* FitFunc)
+{
+    if (!FitFunc)
+    {
+        return std::nullopt;
+    }
+
+    AnalysisResults::ChannelFit Params;
+    Params.Amplitude = FitFunc->GetParameter(0);
+    Params.PeakPosition = FitFunc->GetParameter(1);
+    Params.DecayConstant = FitFunc->GetParameter(2);
+    Params.RiseTimeConstant = FitFunc->GetParameter(3);
+    Params.RisePower = FitFunc->GetParameter(4);
+    Params.Baseline = FitFunc->GetParameter(5);
+
+    return Params;
+}
+
+/**
+ * Extracts fit parameters from a dynode fit function
+ * @param FitFunc Pointer to the fitted function
+ * @return Optional dynode fit parameters
+ */
+std::optional<AnalysisResults::DynodeFit> ExtractDynodeFitParameters(const TF1* FitFunc)
+{
+    if (!FitFunc)
+    {
+        return std::nullopt;
+    }
+
+    AnalysisResults::DynodeFit Params;
+    Params.Amplitude = FitFunc->GetParameter(0);
+    Params.PeakPosition = FitFunc->GetParameter(1);
+    Params.FastDecay = FitFunc->GetParameter(2);
+    Params.SlowDecay = FitFunc->GetParameter(3);
+    Params.RiseTime = FitFunc->GetParameter(4);
+    Params.UndershootAmp = FitFunc->GetParameter(5);
+    Params.UndershootRecovery = FitFunc->GetParameter(6);
+    Params.FastFraction = FitFunc->GetParameter(7);
+    Params.Baseline = FitFunc->GetParameter(8);
+
+    return Params;
+}
+
+/**
+ * Modified version of SaveTraceGraphsWithFit that returns analysis results
+ * @param TreeInput Pointer to the input tree
+ * @param Entry Entry number to process
+ * @return Optional analysis results containing fit parameters and positions
+ */
+std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Long64_t Entry)
+{
+    if (!MeetsSelectionCriteria(TreeInput, Entry))
+    {
+        return std::nullopt;
+    }
+
+    const std::map<Int_t, std::pair<std::string, std::string>> ChannelMap = {
+        {4, {"xa", "X Anode A Signal"}},
+        {7, {"xb", "X Anode B Signal"}},
+        {6, {"ya", "Y Anode A Signal"}},
+        {5, {"yb", "Y Anode B Signal"}}
+    };
+
+    AnalysisResults Results;
+    Results.EventNumber = Entry;
+
+    TTreeReader Reader;
+    Reader.SetTree(TreeInput);
+    TTreeReaderValue<Double_t> HighGainPosX(Reader, "high_gain_.pos_x_");
+    TTreeReaderValue<Double_t> HighGainPosY(Reader, "high_gain_.pos_y_");
+    TTreeReaderArray<processor_struct::ROOTDEV> RootDevVector(Reader, "rootdev_vec_");
+    Reader.SetEntry(Entry);
+
+    // Store position information
+    Results.PosX = *HighGainPosX;
+    Results.PosY = *HighGainPosY;
+
+    Bool_t ValidFits = true;
+
+    if (RootDevVector.GetSize() > 0)
+    {
+        for (UInt_t DeviceIndex = 0; DeviceIndex < RootDevVector.GetSize(); DeviceIndex++)
+        {
+            const auto& Device = RootDevVector.At(DeviceIndex);
+
+            if (!Device.hasValidTimingAnalysis || !Device.hasValidWaveformAnalysis)
+            {
+                continue;
+            }
+
+            // Create temporary graph for fitting
+            auto* TraceGraph = new TGraph(static_cast<Int_t>(Device.trace.size()));
+            for (size_t i = 0; i < Device.trace.size(); i++)
+            {
+                TraceGraph->SetPoint(static_cast<Int_t>(i), static_cast<Double_t>(i), Device.trace[i]);
+            }
+
+            if (Device.subtype == "dynode_high")
+            {
+                try
+                {
+                    TF1* DynodeFitResult = FitDynodePeak(TraceGraph, 0, TraceGraph->GetN());
+                    auto DynodeParams = ExtractDynodeFitParameters(DynodeFitResult);
+                    if (DynodeParams)
+                    {
+                        Results.DynodeFitParams = *DynodeParams;
+                    }
+                    else
+                    {
+                        ValidFits = false;
+                    }
+                    delete DynodeFitResult;
+                }
+                catch (const std::exception& Error)
+                {
+                    std::cerr << "Dynode fitting error for event " << Entry
+                             << ": " << Error.what() << std::endl;
+                    ValidFits = false;
+                }
+            }
+            else if (Device.subtype == "anode_high")
+            {
+                if (auto ChannelIter = ChannelMap.find(Device.chanNum);
+                    ChannelIter != ChannelMap.end())
+                {
+                    try
+                    {
+                        TF1* FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN());
+                        auto AnodeParams = ExtractAnodeFitParameters(FitResult);
+                        if (AnodeParams)
+                        {
+                            Results.AnodeFits[ChannelIter->second.first] = *AnodeParams;
+                        }
+                        else
+                        {
+                            ValidFits = false;
+                        }
+                        delete FitResult;
+                    }
+                    catch (const std::exception& Error)
+                    {
+                        std::cerr << "Fitting error for " << ChannelIter->second.first
+                                 << " in event " << Entry << ": " << Error.what() << std::endl;
+                        ValidFits = false;
+                    }
+                }
+            }
+            delete TraceGraph;
+        }
+    }
+
+    return ValidFits ? std::optional(Results) : std::nullopt;
+}
+
+void SaveAnalysisResults(const std::vector<AnalysisResults>& Results, const Int_t RunNumber, const Int_t SubRunNumber)
+{
+    std::cout << "\n[SaveAnalysisResults] Run " << std::setfill('0') << std::setw(3) << RunNumber
+              << "_" << std::setfill('0') << std::setw(2) << SubRunNumber
+              << ": Saving " << Results.size() << " events\n" << std::endl;
+
+    // Create output filename based on run numbers
+    std::ostringstream OutputFileName;
+    OutputFileName << "analysis_"
+                  << std::setfill('0') << std::setw(3) << RunNumber
+                  << "_"
+                  << std::setfill('0') << std::setw(2) << SubRunNumber
+                  << ".root";
+
+    TFile OutputFile(OutputFileName.str().c_str(), "RECREATE");
+
+    // Create a tree to store the results
+    TTree ResultTree("analysis", "Analysis Results");
+
+    // Variables for tree branches
+    AnalysisResults CurrentEvent;
+
+    // Set up branches
+    ResultTree.Branch("event_number", &CurrentEvent.EventNumber);
+    ResultTree.Branch("pos_x", &CurrentEvent.PosX);
+    ResultTree.Branch("pos_y", &CurrentEvent.PosY);
+
+    // Branches for anode fit parameters
+    for (const auto& Channel : {"xa", "xb", "ya", "yb"})
+    {
+        std::string Prefix = std::string(Channel) + "_";
+        ResultTree.Branch((Prefix + "amplitude").c_str(), &CurrentEvent.AnodeFits[Channel].Amplitude);
+        ResultTree.Branch((Prefix + "peak_position").c_str(), &CurrentEvent.AnodeFits[Channel].PeakPosition);
+        ResultTree.Branch((Prefix + "decay_constant").c_str(), &CurrentEvent.AnodeFits[Channel].DecayConstant);
+        ResultTree.Branch((Prefix + "rise_time").c_str(), &CurrentEvent.AnodeFits[Channel].RiseTimeConstant);
+        ResultTree.Branch((Prefix + "rise_power").c_str(), &CurrentEvent.AnodeFits[Channel].RisePower);
+        ResultTree.Branch((Prefix + "baseline").c_str(), &CurrentEvent.AnodeFits[Channel].Baseline);
+    }
+
+    // Branches for dynode fit parameters
+    ResultTree.Branch("dynode_amplitude", &CurrentEvent.DynodeFitParams.Amplitude);
+    ResultTree.Branch("dynode_peak_position", &CurrentEvent.DynodeFitParams.PeakPosition);
+    ResultTree.Branch("dynode_fast_decay", &CurrentEvent.DynodeFitParams.FastDecay);
+    ResultTree.Branch("dynode_slow_decay", &CurrentEvent.DynodeFitParams.SlowDecay);
+    ResultTree.Branch("dynode_rise_time", &CurrentEvent.DynodeFitParams.RiseTime);
+    ResultTree.Branch("dynode_undershoot_amp", &CurrentEvent.DynodeFitParams.UndershootAmp);
+    ResultTree.Branch("dynode_undershoot_recovery", &CurrentEvent.DynodeFitParams.UndershootRecovery);
+    ResultTree.Branch("dynode_fast_fraction", &CurrentEvent.DynodeFitParams.FastFraction);
+    ResultTree.Branch("dynode_baseline", &CurrentEvent.DynodeFitParams.Baseline);
+
+    // Fill tree with results
+    for (const auto& Result : Results)
+    {
+        CurrentEvent = Result;
+        ResultTree.Fill();
+    }
+
+    ResultTree.Write();
+    OutputFile.Close();
+}

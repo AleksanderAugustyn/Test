@@ -39,7 +39,7 @@ void LoadRequiredLibraries()
 TFile* OpenRootFile(const char* FileName)
 {
     // /home/aaugustyn/data/FileName
-    auto* path = "/home/aaugustyn/data/";
+    auto* path = "/mnt/Scratch1/ribf168rootfiles/pixie_bigrips_merged/";
     TFile* InputFile = TFile::Open((std::string(path) + FileName).c_str());
 
     if (!InputFile || InputFile->IsZombie())
