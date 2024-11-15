@@ -26,7 +26,7 @@ int main()
 
 
         Int_t ProcessedFiles = 0;
-        constexpr Int_t MaxFilesToProcess = 10;
+        constexpr Int_t MaxFilesToProcess = 100;
 
         for (const auto& [RunNumber, SubRunNumber] : RunsToProcess)
         {
