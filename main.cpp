@@ -50,7 +50,7 @@ int main()
                 {117, 35}, {117, 36},
                 {117, 37}, {117, 38},
                 {117, 39}, {117, 40}
-            };;
+            };
             AnalyzePositionVsFitParameters(RunsToAnalyze, "position_analysis");
 
             return 0;
