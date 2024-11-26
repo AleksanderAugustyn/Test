@@ -3,6 +3,7 @@
 #include <TFile.h>
 #include <TTree.h>
 #include <TCanvas.h>
+#include <TF1.h>
 #include <TProfile.h>
 #include <TProfile2D.h>
 #include <TStyle.h>
@@ -142,6 +143,17 @@ AnalysisHistograms InitializeHistograms(const std::vector<std::string>& Channels
             Form("%s_rise_power_hist", Channel.c_str()),
             Form("%s Rise Power Distribution;Rise Power;Counts", Channel.c_str()),
             3000, 1.0, 4.0);
+
+        // NEW: Create Rise Power vs Position profile for filtered events
+        Histograms.FilteredRisePowerScatter[Channel] = new TProfile2D(
+            Form("%s_rise_power_vs_pos_filtered", Channel.c_str()),
+            Form("%s Rise Power vs Position (0.1-0.4 region);X Position;Y Position", Channel.c_str()),
+            300, 0.1, 0.4, 300, 0.1, 0.4);
+        Histograms.FilteredRisePowerScatter[Channel]->GetZaxis()->SetTitle("Rise Power");
+        Histograms.FilteredRisePowerScatter[Channel]->SetTitleSize(0.05);
+        Histograms.FilteredRisePowerScatter[Channel]->GetXaxis()->SetTitleSize(0.05);
+        Histograms.FilteredRisePowerScatter[Channel]->GetYaxis()->SetTitleSize(0.05);
+        Histograms.FilteredRisePowerScatter[Channel]->GetZaxis()->SetTitleSize(0.05);
     }
 
     return Histograms;
@@ -217,6 +229,11 @@ void ProcessInputFiles(const std::vector<std::pair<Int_t, Int_t>>& RunsToAnalyze
                 Histograms.CountHist[Channel]->Fill(PosX, PosY);
 
                 Histograms.RisePowerHists[Channel]->Fill(FitData[Channel].RisePower);
+
+                // NEW: Fill filtered rise power scatter plot
+                if (PosX >= 0.1 && PosX <= 0.4 && PosY >= 0.1 && PosY <= 0.4) {
+                    Histograms.FilteredRisePowerScatter[Channel]->Fill(PosX, PosY, FitData[Channel].RisePower);
+                }
             }
         }
 
@@ -309,7 +326,6 @@ void CreateAndSaveChannelPlots(const AnalysisHistograms& Histograms,
 
         auto* countsHist = Histograms.CountHist.at(Channel);
         countsHist->SetMinimum(0);  // Set minimum of Z axis
-        // countsHist->SetMaximum(100);  // Set maximum of Z axis
         countsHist->Draw("COLZ");
 
         // Calculate events in the 0.1-0.4 region
@@ -348,6 +364,55 @@ void CreateAndSaveChannelPlots(const AnalysisHistograms& Histograms,
 
         Canvas2D->Write();
         Canvas2D->SaveAs(Form("%s/%s_parameters_2d.png", OutputDirectory, Channel.c_str()));
+
+        // NEW: Create filtered Rise Power vs Position plot with X projection
+        auto* FilteredCanvas = new TCanvas(Form("%s_filtered_rise_power_canvas", Channel.c_str()),
+                                         Form("%s Rise Power vs Position (0.1-0.4 region)", Channel.c_str()),
+                                         1200, 600);
+        FilteredCanvas->Divide(2, 1);  // Divide canvas into two pads
+
+        // Left pad: 2D plot
+        FilteredCanvas->cd(1);
+        gPad->SetRightMargin(0.15);
+        gPad->SetGridx();
+        gPad->SetGridy();
+
+        auto* filteredPowerHist = Histograms.FilteredRisePowerScatter.at(Channel);
+        filteredPowerHist->SetMinimum(1.0);
+        filteredPowerHist->SetMaximum(4.0);
+        filteredPowerHist->Draw("COLZ");
+
+        // Right pad: X projection
+        FilteredCanvas->cd(2);
+        gPad->SetGridx();
+        gPad->SetGridy();
+
+        // Create projection onto X axis using ProfileX
+        auto* xProj = filteredPowerHist->ProfileX(
+            Form("%s_x_proj", filteredPowerHist->GetName()));
+
+        xProj->SetTitle(Form("%s X Projection;X Position;Average Rise Power", Channel.c_str()));
+        xProj->SetStats(1);  // Enable statistics box for fit parameters
+        xProj->SetMinimum(1.0);
+        xProj->SetMaximum(4.0);
+        xProj->SetMarkerStyle(20);
+        xProj->SetMarkerSize(0.5);
+
+        // Create and perform parabolic fit
+        auto parabola = new TF1("parabola", "[0] + [1]*(x-[5]) + [2]*(x-[5])^2 + [3]*(x-[5])^3 + [4]*(x-[5])^4", 0.1, 0.4);
+        parabola->SetParameters(5.0, -20.0, 25.0, -20.0, 15.0, 0.25);
+        parabola->SetParNames("Offset", "Linear", "Quadratic", "Cubic", "Quartic", "Center");
+        parabola->SetLineColor(kRed);
+        xProj->Fit(parabola, "R");  // R = fit in specified range
+
+        xProj->Draw("E1");
+        parabola->Draw("same");
+
+        FilteredCanvas->Write();
+        FilteredCanvas->SaveAs(Form("%s/%s_rise_power_filtered.png", OutputDirectory, Channel.c_str()));
+        delete parabola;
+        delete FilteredCanvas;
+        delete xProj;
 
         // Create Rise Power distribution plot
         auto* RisePowerCanvas = new TCanvas(Form("%s_rise_power_canvas", Channel.c_str()),
@@ -404,6 +469,7 @@ void CreateAndSaveChannelPlots(const AnalysisHistograms& Histograms,
             Histograms.Profile2Ds.at(Channel + ProfileType)->Write();
         }
         Histograms.RisePowerHists.at(Channel)->Write();
+        Histograms.FilteredRisePowerScatter.at(Channel)->Write();  // NEW: Write filtered histogram
     }
 
     OutputFile.Close();
@@ -428,6 +494,11 @@ void CleanupHistograms(AnalysisHistograms& Histograms)
         delete Hist;
     }
     for (auto& [Channel, Hist] : Histograms.CountHist)
+    {
+        delete Hist;
+    }
+    // NEW: Cleanup filtered rise power scatter plots
+    for (auto& [Channel, Hist] : Histograms.FilteredRisePowerScatter)
     {
         delete Hist;
     }

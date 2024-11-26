@@ -50,7 +50,8 @@ struct AnalysisHistograms
     std::map<std::string, std::vector<TProfile*>> Profiles;
     std::map<std::string, TProfile2D*> Profile2Ds;
     std::map<std::string, TH1D*> RisePowerHists;
-    std::map<std::string, TH2D*> CountHist;  // Added for true event counting
+    std::map<std::string, TH2D*> CountHist;
+    std::map<std::string, TProfile2D*> FilteredRisePowerScatter;
 };
 
 struct ChannelFitData
