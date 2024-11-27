@@ -5,7 +5,6 @@
 #include <TGraph.h>
 #include <TFitResult.h>
 #include <TFile.h>
-#include <TH2D.h>
 #include <TProfile.h>
 #include <TProfile2D.h>
 
@@ -46,12 +45,12 @@ struct AnalysisResults
 
 struct AnalysisHistograms
 {
-    std::map<std::string, std::vector<TH2D*>> ScatterPlots;
-    std::map<std::string, std::vector<TProfile*>> Profiles;
-    std::map<std::string, TProfile2D*> Profile2Ds;
-    std::map<std::string, TH1D*> RisePowerHists;
-    std::map<std::string, TH2D*> CountHist;
-    std::map<std::string, TProfile2D*> FilteredRisePowerScatter;
+    std::map<std::string, std::vector<TH2D *> > ScatterPlots;
+    std::map<std::string, std::vector<TProfile *> > Profiles;
+    std::map<std::string, TProfile2D *> Profile2Ds;
+    std::map<std::string, TH1D *> RisePowerHists;
+    std::map<std::string, TH2D *> CountHist;
+    std::map<std::string, TProfile2D *> FilteredRisePowerScatter;
 };
 
 struct ChannelFitData
@@ -97,9 +96,13 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree *TreeInput, Long64_t 
 void SaveAnalysisResults(const std::vector<AnalysisResults> &Results, Int_t RunNumber, Int_t SubRunNumber);
 
 // FitAnalysis
+Double_t CalculateRisePower(const std::string &Channel, Double_t Position);
+
 Double_t AnodePeakFunction(const Double_t *X, const Double_t *Parameters);
 
-TF1 *FitPeakToTrace(TGraph *TraceGraph, Double_t FitRangeStart, Double_t FitRangeEnd);
+TF1 *FitPeakToTrace(TGraph *TraceGraph, Double_t FitRangeStart,
+                    Double_t FitRangeEnd, const std::string &Channel,
+                    Double_t Position);
 
 Double_t DynodePeakFunction(const Double_t *X, const Double_t *Parameters);
 

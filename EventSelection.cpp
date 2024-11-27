@@ -59,11 +59,15 @@ Bool_t MeetsSelectionCriteria(TTree* TreeInput, const Long64_t Entry)
     Int_t HighGainValid;
     Int_t LowGainValid;
     Double_t HighGainQdc;
+    Double_t PosX;
+    Double_t PosY;
 
-    // Set branch addresses for previous criteria
+    // Set branch addresses
     TreeInput->SetBranchAddress("high_gain_.valid_", &HighGainValid);
     TreeInput->SetBranchAddress("low_gain_.valid_", &LowGainValid);
     TreeInput->SetBranchAddress("high_gain_.qdc_", &HighGainQdc);
+    TreeInput->SetBranchAddress("high_gain_.pos_x_", &PosX);
+    TreeInput->SetBranchAddress("high_gain_.pos_y_", &PosY);
 
     // Get the values for this entry
     TreeInput->GetEntry(Entry);
@@ -80,6 +84,15 @@ Bool_t MeetsSelectionCriteria(TTree* TreeInput, const Long64_t Entry)
     }
 
     if (HighGainQdc <= 10000 || HighGainQdc >= 50000)
+    {
+        return false;
+    }
+
+    // Check position range
+    constexpr Double_t MinPos = 0.1;
+    constexpr Double_t MaxPos = 0.4;
+
+    if (PosX < MinPos || PosX > MaxPos || PosY < MinPos || PosY > MaxPos)
     {
         return false;
     }
@@ -152,9 +165,13 @@ std::vector<Long64_t> GetAllQualifyingEvents(TTree* TreeInput)
 
     std::cout << "Scanning " << Entries << " events for qualification..." << std::endl;
 
+    int EventCounter = 1;
+
     for (Long64_t Event = 0; Event < Entries; Event++)
     {
-        /*if (Event % 10000 == 0)
+
+
+        /*if (EventCounter % 10000 == 0)
         {
             std::cout << "Processing event " << Event << "/" << Entries << "\r" << std::flush;
         }*/
@@ -163,6 +180,8 @@ std::vector<Long64_t> GetAllQualifyingEvents(TTree* TreeInput)
         {
             QualifyingEvents.push_back(Event);
         }
+
+        EventCounter++;
     }
 
     std::cout << "\nFound " << QualifyingEvents.size() << " qualifying events" << std::endl;

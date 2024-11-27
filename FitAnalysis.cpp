@@ -2,6 +2,48 @@
 #include <TGraph.h>
 #include <iostream>
 
+// Define polynomial coefficients struct for rise power functions
+struct RisePowerCoefficients
+{
+    Double_t Offset; // p[0]
+    Double_t Linear; // p[1]
+    Double_t Quadratic; // p[2]
+    Double_t Cubic; // p[3]
+    Double_t Quartic; // p[4]
+    Double_t Center; // p[5]
+};
+
+// Channel-specific rise power polynomial coefficients
+const std::map<std::string, RisePowerCoefficients> ChannelRisePowerFits = {
+    {"xa", {1.178, 0.1166, 7.657, 31.42, 1222.0, 0.2509}},
+    {"xb", {1.177, 0.1157, 8.094, 33.55, 1201.0, 0.2511}},
+    {"ya", {1.178, 0.1174, 7.860, 32.89, 1212.0, 0.2510}},
+    {"yb", {1.178, 0.1177, 7.531, 33.51, 1235.0, 0.2512}}
+};
+
+Double_t CalculateRisePower(const std::string& Channel, const Double_t Position)
+{
+    if (ChannelRisePowerFits.find(Channel) == ChannelRisePowerFits.end())
+    {
+        throw std::runtime_error("Invalid channel name");
+    }
+
+    // Validate X position range
+    if (Position < 0.1 || Position > 0.4)
+    {
+        throw std::runtime_error("Invalid X position: " + std::to_string(Position));
+    }
+
+    const auto&[Offset, Linear, Quadratic, Cubic, Quartic, Center] = ChannelRisePowerFits.at(Channel);
+    const Double_t X = Position - Center;
+
+    return Offset +
+           Linear * X +
+           Quadratic * std::pow(X, 2) +
+           Cubic * std::pow(X, 3) +
+           Quartic * std::pow(X, 4);
+}
+
 /**
  * Function defining the peak shape for fitting the anode trace
  * p[0] = amplitude
@@ -11,7 +53,7 @@
  * p[4] = rise time power
  * p[5] = baseline
  */
-Double_t AnodePeakFunction(const Double_t* X, const Double_t* Parameters)
+Double_t AnodePeakFunction(const Double_t *X, const Double_t *Parameters)
 {
     // Before peak, return baseline
     if (X[0] <= Parameters[1])
@@ -32,21 +74,22 @@ Double_t AnodePeakFunction(const Double_t* X, const Double_t* Parameters)
 }
 
 /**
- * Fits the peak function to a trace and adds the fit to the graph
+ * Modified version of FitPeakToTrace that uses position information to constrain rise power
  * @param TraceGraph Pointer to the graph containing the trace
  * @param FitRangeStart Start of the fit range
  * @param FitRangeEnd End of the fit range
+ * @param Channel Channel identifier (xa, xb, ya, yb)
+ * @param Position X or Y position depending on the channel
  * @return Pointer to the fitted function
  */
-TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Double_t FitRangeEnd)
+TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart,
+                    const Double_t FitRangeEnd, const std::string& Channel,
+                    const Double_t Position)
 {
     if (!TraceGraph)
     {
         throw std::runtime_error("Invalid graph pointer");
     }
-
-    // std::cout << "\nFitting trace: " << TraceGraph->GetTitle() << std::endl;
-    // std::cout << "Fit range: [" << FitRangeStart << ", " << FitRangeEnd << "]" << std::endl;
 
     // Create the fit function
     static int FitCounter = 0;
@@ -58,7 +101,7 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     FitFunc->SetParName(1, "PeakPosition");
     FitFunc->SetParName(2, "DecayConstant");
     FitFunc->SetParName(3, "RiseTimeConstant");
-    FitFunc->SetParName(4, "RiseTimePower");
+    FitFunc->SetParName(4, "RisePower");
     FitFunc->SetParName(5, "Baseline");
 
     // Find approximate parameters
@@ -78,7 +121,7 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     }
     BaselineValue /= BaselineSamples;
 
-    // Calculate baseline RMS for better baseline constraints
+    // Calculate baseline RMS for better constraints
     Double_t BaselineRMS = 0;
     for (Int_t i = 0; i < BaselineSamples; i++)
     {
@@ -98,24 +141,18 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
         Double_t X, Y;
         TraceGraph->GetPoint(i, X, Y);
 
-        // Find rise start
         if (!RiseStartFound && Y > RiseThreshold)
         {
             RiseStartX = X;
             RiseStartFound = true;
         }
 
-        // Track maximum
         if (Y > MaxY)
         {
             MaxY = Y;
             MaxX = X;
         }
     }
-
-    /*std::cout << "MaxX: " << MaxX << std::endl;
-    std::cout << "MaxY: " << MaxY << std::endl;
-    std::cout << RiseStartX << std::endl;*/
 
     // Estimate decay time constant
     Double_t DecayEndX = MaxX;
@@ -132,49 +169,30 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
     const Double_t EstimatedDecayConstant = DecayEndX - MaxX;
     const Double_t EstimatedRiseTime = MaxX - RiseStartX;
 
-    // std::cout << "Initial parameter estimation:" << std::endl;
-    // std::cout << "  Max amplitude: " << MaxY - BaselineValue << " at position: " << MaxX << std::endl;
-    // std::cout << "  Baseline: " << BaselineValue << " ± " << BaselineRMS << std::endl;
-    // std::cout << "  Estimated rise time: " << EstimatedRiseTime << std::endl;
-    // std::cout << "  Estimated decay constant: " << EstimatedDecayConstant << std::endl;
+    // Calculate expected rise power from position
+    const Double_t ExpectedRisePower = CalculateRisePower(Channel, Position);
+    constexpr Double_t RisePowerTolerance = 0.05; // Allow some variation around the expected value
 
     // Set initial parameters with improved estimates
     FitFunc->SetParameter(0, MaxY - BaselineValue);  // Amplitude
     FitFunc->SetParameter(1, MaxX);                  // Peak position
     FitFunc->SetParameter(2, EstimatedDecayConstant);// Decay constant
     FitFunc->SetParameter(3, EstimatedRiseTime);     // Rise time constant
-    FitFunc->SetParameter(4, 2.0);                   // Rise time power (start between linear and quadratic)
+    FitFunc->SetParameter(4, ExpectedRisePower);     // Rise time power (from position)
     FitFunc->SetParameter(5, BaselineValue);         // Baseline
 
     // Set parameter limits
-    FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 1.2 * MaxY);  // 2.0 * (MaxY - BaselineValue));  // Amplitude
-    FitFunc->SetParLimits(1, MaxX - 30, MaxX + 30);        // Peak position
-    FitFunc->SetParLimits(2, 1, 200);                     // Decay constant (reasonable range for PMT)
-    FitFunc->SetParLimits(3, 1, 100);                       // Rise time constant
-    FitFunc->SetParLimits(4, 1.0, 4.0);                    // Rise time power
-    FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);  // Baseline
+    FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 1.2 * MaxY);
+    FitFunc->SetParLimits(1, MaxX - 30, MaxX + 30);
+    FitFunc->SetParLimits(2, 1, 200);
+    FitFunc->SetParLimits(3, 1, 100);
+    // Constrain rise power around the expected value from position
+    FitFunc->SetParLimits(4, ExpectedRisePower - RisePowerTolerance,
+                            ExpectedRisePower + RisePowerTolerance);
+    FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);
 
     // Perform the fit
-    [[maybe_unused]] const Int_t FitStatus = TraceGraph->Fit(FitFunc, "QR");  // Q: quiet, R: use range
-
-    /*// Print fit results
-     std::cout << "Fit status: " << FitStatus << " (0 = success)" << std::endl;
-    std::cout << "Fitted parameters:" << std::endl;
-    for (Int_t i = 0; i < FitFunc->GetNpar(); i++)
-    {
-        std::cout << "  " << FitFunc->GetParName(i) << ": "
-                 << FitFunc->GetParameter(i) << " +/- "
-                 << FitFunc->GetParError(i) << std::endl;
-    }
-
-    // Calculate fit quality metrics
-    const Double_t ChiSquare = FitFunc->GetChisquare();
-    const Int_t NDF = FitFunc->GetNDF();
-    const Double_t RedChiSquare = ChiSquare / NDF;
-    std::cout << "Fit quality:" << std::endl;
-    std::cout << " Chi-square: " << ChiSquare << std::endl;
-    std::cout << " NDF: " << NDF << std::endl;
-    std::cout << " Reduced chi-square: " << RedChiSquare << std::endl;*/
+    [[maybe_unused]] const Int_t FitStatus = TraceGraph->Fit(FitFunc, "QR");
 
     // Set fit function style
     FitFunc->SetLineColor(kRed);
@@ -197,9 +215,9 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart, const Doub
  * p[7] = relative weight of fast component
  * p[8] = baseline
  */
-Double_t DynodePeakFunction(const Double_t* X, const Double_t* Parameters)
+Double_t DynodePeakFunction(const Double_t *X, const Double_t *Parameters)
 {
-    const Double_t T = X[0] - Parameters[1];  // Time relative to peak
+    const Double_t T = X[0] - Parameters[1]; // Time relative to peak
 
     // Before peak, return baseline
     if (T < 0)
@@ -229,7 +247,7 @@ Double_t DynodePeakFunction(const Double_t* X, const Double_t* Parameters)
  * @param FitRangeEnd End of the fit range
  * @return Pointer to the fitted function
  */
-TF1* FitDynodePeak(TGraph* TraceGraph, const Double_t FitRangeStart, const Double_t FitRangeEnd)
+TF1 *FitDynodePeak(TGraph *TraceGraph, const Double_t FitRangeStart, const Double_t FitRangeEnd)
 {
     if (!TraceGraph)
     {
@@ -296,29 +314,29 @@ TF1* FitDynodePeak(TGraph* TraceGraph, const Double_t FitRangeStart, const Doubl
     }
 
     // Set initial parameters
-    FitFunc->SetParameter(0, MaxY - BaselineValue);  // Amplitude
-    FitFunc->SetParameter(1, MaxX);                  // Peak position
-    FitFunc->SetParameter(2, 20.0);                  // Fast decay (~10ns)
-    FitFunc->SetParameter(3, 40.0);                  // Slow decay (~40ns)
-    FitFunc->SetParameter(4, 3.0);                   // Rise time
-    FitFunc->SetParameter(5, BaselineValue - MinAfterPeak);  // Undershoot amplitude
-    FitFunc->SetParameter(6, 500.0);                 // Undershoot recovery
-    FitFunc->SetParameter(7, 2.0);                   // Fast fraction
-    FitFunc->SetParameter(8, BaselineValue);         // Baseline
+    FitFunc->SetParameter(0, MaxY - BaselineValue); // Amplitude
+    FitFunc->SetParameter(1, MaxX); // Peak position
+    FitFunc->SetParameter(2, 20.0); // Fast decay (~10ns)
+    FitFunc->SetParameter(3, 40.0); // Slow decay (~40ns)
+    FitFunc->SetParameter(4, 3.0); // Rise time
+    FitFunc->SetParameter(5, BaselineValue - MinAfterPeak); // Undershoot amplitude
+    FitFunc->SetParameter(6, 500.0); // Undershoot recovery
+    FitFunc->SetParameter(7, 2.0); // Fast fraction
+    FitFunc->SetParameter(8, BaselineValue); // Baseline
 
     // Set parameter limits
-    FitFunc->SetParLimits(0, 0.5*(MaxY - BaselineValue), 2.5*(MaxY - BaselineValue));
+    FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 2.5 * (MaxY - BaselineValue));
     FitFunc->SetParLimits(1, MaxX - 50, MaxX + 50);
-    FitFunc->SetParLimits(2, 1.0, 100.0);       // Fast decay
-    FitFunc->SetParLimits(3, 10.0, 200.0);     // Slow decay
-    FitFunc->SetParLimits(4, 0.5, 20.0);       // Rise time
+    FitFunc->SetParLimits(2, 1.0, 100.0); // Fast decay
+    FitFunc->SetParLimits(3, 10.0, 200.0); // Slow decay
+    FitFunc->SetParLimits(4, 0.5, 20.0); // Rise time
     FitFunc->SetParLimits(5, 0.0, BaselineValue - MinAfterPeak + 300);
-    FitFunc->SetParLimits(6, 50.0, 1000.0);     // Undershoot recovery
-    FitFunc->SetParLimits(7, 0.0, 50.0);        // Fast fraction
+    FitFunc->SetParLimits(6, 50.0, 1000.0); // Undershoot recovery
+    FitFunc->SetParLimits(7, 0.0, 50.0); // Fast fraction
     FitFunc->SetParLimits(8, BaselineValue - 100, BaselineValue + 100);
 
     // Perform the fit
-    TraceGraph->Fit(FitFunc, "QR");  // Q: quiet, R: use range
+    TraceGraph->Fit(FitFunc, "QR"); // Q: quiet, R: use range
 
     return FitFunc;
 }

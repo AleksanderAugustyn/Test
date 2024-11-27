@@ -163,7 +163,7 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
         return;
     }
 
-    const std::map<Int_t, std::pair<std::string, std::string> > ChannelMap = {
+    const std::map<Int_t, std::pair<std::string, std::string>> ChannelMap = {
         {4, {"xa", "X Anode A Signal"}},
         {7, {"xb", "X Anode B Signal"}},
         {6, {"ya", "Y Anode A Signal"}},
@@ -174,15 +174,16 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
     Reader.SetTree(TreeInput);
     TTreeReaderValue<Double_t> HighGainPosX(Reader, "high_gain_.pos_x_");
     TTreeReaderValue<Double_t> HighGainPosY(Reader, "high_gain_.pos_y_");
-    TTreeReaderArray<processor_struct::ROOTDEV> RootDevVector = {Reader, "rootdev_vec_"};
+    TTreeReaderArray<processor_struct::ROOTDEV> RootDevVector(Reader, "rootdev_vec_");
     Reader.SetEntry(Entry);
 
-    /*// Print position information
-    std::cout << "\nEvent " << Entry << " Position Information:" << std::endl;
-    std::cout << "High Gain Position: X = " << std::fixed << std::setprecision(5) << *HighGainPosX << ", Y = " << *HighGainPosY << std::endl;*/
+    std::map<std::string, TGraph*> TraceGraphs;
+    std::vector<TF1*> FitFunctions;
 
-    std::map<std::string, TGraph *> TraceGraphs;
-    std::vector<TF1 *> FitFunctions;
+    Double_t PositionX = *HighGainPosX;
+    [[maybe_unused]] Double_t PositionY = *HighGainPosY;
+
+    std::cout << "Position: " << PositionX << ", " << PositionY << std::endl;
 
     // Global style settings
     gStyle->SetOptTitle(1);
@@ -199,14 +200,9 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
 
     if (RootDevVector.GetSize() > 0)
     {
-        /*std::map<std::string, std::vector<Double_t> > FitParameters;
-        std::cout << "\nFit Parameters:" << std::endl;
-        std::cout << "Channel\tAmplitude\tPosition\tDecay(τ1)\tRise(τ2)\tPower\tBaseline" << std::endl;
-        std::cout << "------------------------------------------------------------------------" << std::endl;*/
-
         for (UInt_t DeviceIndex = 0; DeviceIndex < RootDevVector.GetSize(); DeviceIndex++)
         {
-            const auto &Device = RootDevVector.At(DeviceIndex);
+            const auto& Device = RootDevVector.At(DeviceIndex);
 
             if (!Device.hasValidTimingAnalysis || !Device.hasValidWaveformAnalysis)
             {
@@ -215,107 +211,54 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
 
             if (Device.subtype == "dynode_high")
             {
-                const auto TraceGraph = CreateTraceGraph(Device, "Dynode High Signal", static_cast<Int_t>(DeviceIndex));
+                const auto TraceGraph = CreateTraceGraph(Device, "Dynode High Signal",
+                                                       static_cast<Int_t>(DeviceIndex));
                 TraceGraphs["dynode"] = TraceGraph;
 
                 try
                 {
-                    /*// Print header for dynode fit parameters
-                    std::cout << "\nDynode Signal Fit Parameters:" << std::endl;
-                    std::cout << "-------------------------------------------------------------" << std::endl;
-                    std::cout << "Parameter           Value           Error" << std::endl;
-                    std::cout << "-------------------------------------------------------------" << std::endl;*/
-
-                    TF1 *DynodeFitResult = FitDynodePeak(TraceGraph, 0, TraceGraph->GetN());
+                    TF1* DynodeFitResult = FitDynodePeak(TraceGraph, 0, TraceGraph->GetN());
                     DynodeFitResult->SetLineColor(kRed);
                     DynodeFitResult->SetLineWidth(3);
                     DynodeFitResult->SetNpx(2000);
                     FitFunctions.push_back(DynodeFitResult);
-
-                    /*// Store and print fit parameters with formatting
-                    const char *ParamNames[] = {
-                        "Amplitude", "Peak Position", "Fast Decay τ1", "Slow Decay τ2",
-                        "Rise Time τr", "Undershoot Amp", "Undershoot τu", "Fast Fraction",
-                        "Baseline"
-                    };
-
-                    for (Int_t i = 0; i < DynodeFitResult->GetNpar(); i++)
-                    {
-                        const Double_t Value = DynodeFitResult->GetParameter(i);
-                        const Double_t Error = DynodeFitResult->GetParError(i);
-
-                        std::cout << std::left << std::setw(18) << ParamNames[i]
-                                << std::fixed << std::setprecision(3)
-                                << std::setw(15) << Value
-                                << " ± " << std::setw(10) << Error << std::endl;
-                    }*/
-
-                    /*// Calculate and print fit quality metrics
-                    const Double_t ChiSquare = DynodeFitResult->GetChisquare();
-                    const Int_t NDF = DynodeFitResult->GetNDF();
-                    const Double_t RedChiSquare = ChiSquare / NDF;
-
-                    std::cout << "\nFit Quality Metrics:" << std::endl;
-                    std::cout << "Chi-square: " << std::fixed << std::setprecision(2) << ChiSquare << std::endl;
-                    std::cout << "NDF: " << NDF << std::endl;
-                    std::cout << "Reduced chi-square: " << std::fixed << std::setprecision(3) << RedChiSquare << std::endl;*/
-
-                    // Add statistics box to the plot
-                    gStyle->SetOptFit(1); // Show fit statistics on plot
-                    gStyle->SetStatX(0.9);
-                    gStyle->SetStatY(0.9);
                 }
-                catch (const std::exception &Error)
+                catch (const std::exception& Error)
                 {
                     std::cerr << "Dynode fitting error: " << Error.what() << std::endl;
                 }
             }
-
-            if (Device.subtype == "anode_high")
+            else if (Device.subtype == "anode_high")
             {
-                if (auto ChannelIter = ChannelMap.find(Device.chanNum); ChannelIter != ChannelMap.end())
+                if (auto ChannelIter = ChannelMap.find(Device.chanNum);
+                    ChannelIter != ChannelMap.end())
                 {
-                    const auto TraceGraph = CreateTraceGraph(Device, ChannelIter->second.second, static_cast<Int_t>(DeviceIndex));
+                    const auto TraceGraph = CreateTraceGraph(Device,
+                                                           ChannelIter->second.second,
+                                                           static_cast<Int_t>(DeviceIndex));
                     TraceGraphs[ChannelIter->second.first] = TraceGraph;
 
                     try
                     {
-                        TF1 *FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN());
+                        // Always use X position for rise power calculation
+                        TF1* FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN(),
+                                                      ChannelIter->second.first, PositionX);
                         FitResult->SetLineColor(kRed);
                         FitResult->SetLineWidth(5);
                         FitResult->SetNpx(2000);
                         FitFunctions.push_back(FitResult);
-
-                        /*// Store fit parameters
-                        std::vector<Double_t> Params;
-                        Params.reserve(FitResult->GetNpar());
-                        for (Int_t i = 0; i < FitResult->GetNpar(); i++)
-                        {
-                            Params.push_back(FitResult->GetParameter(i));
-                        }
-                        FitParameters[ChannelIter->second.first] = Params;
-
-                        // Print fit parameters
-                        std::cout << std::fixed << std::setprecision(5)
-                                << ChannelIter->second.first << "\t"
-                                << FitResult->GetParameter(0) << "\t\t" // Amplitude
-                                << FitResult->GetParameter(1) << "\t\t" // Peak Position
-                                << FitResult->GetParameter(2) << "\t\t" // Decay Time (τ1)
-                                << FitResult->GetParameter(3) << "\t\t" // Rise Time (τ2)
-                                << FitResult->GetParameter(4) << "\t" // Rise Time Power
-                                << FitResult->GetParameter(5) << std::endl; // Baseline*/
                     }
-                    catch (const std::exception &Error)
+                    catch (const std::exception& Error)
                     {
                         std::cerr << "Fitting error for " << ChannelIter->second.first
-                                << ": " << Error.what() << std::endl;
+                                 << ": " << Error.what() << std::endl;
                     }
                 }
             }
         }
     }
 
-    // Create visualization (rest of the function remains the same)
+    // Create visualization
     if (TraceGraphs.size() == 5)
     {
         const auto CombinedCanvas = new TCanvas("AllTraces", "All Traces", 2000, 1600);
@@ -324,7 +267,7 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
 
         // Print the X and Y positions on the canvas, at the top
         char PositionText[100];
-        sprintf(PositionText, "X = %.5f, Y = %.5f", *HighGainPosX, *HighGainPosY);
+        sprintf(PositionText, "X = %.5f, Y = %.5f", PositionX, PositionY);
         auto PositionLabel = new TText(0.5, 0.95, PositionText);
         PositionLabel->SetNDC();
         PositionLabel->SetTextSize(0.05);
@@ -491,7 +434,6 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Lon
     TTreeReaderArray<processor_struct::ROOTDEV> RootDevVector(Reader, "rootdev_vec_");
     Reader.SetEntry(Entry);
 
-    // Store position information
     Results.PosX = *HighGainPosX;
     Results.PosY = *HighGainPosY;
 
@@ -508,11 +450,11 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Lon
                 continue;
             }
 
-            // Create temporary graph for fitting
             auto* TraceGraph = new TGraph(static_cast<Int_t>(Device.trace.size()));
             for (size_t i = 0; i < Device.trace.size(); i++)
             {
-                TraceGraph->SetPoint(static_cast<Int_t>(i), static_cast<Double_t>(i), Device.trace[i]);
+                TraceGraph->SetPoint(static_cast<Int_t>(i),
+                                   static_cast<Double_t>(i), Device.trace[i]);
             }
 
             if (Device.subtype == "dynode_high")
@@ -545,7 +487,10 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Lon
                 {
                     try
                     {
-                        TF1* FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN());
+                        //std::cout << "Position: " << Results.PosX << std::endl;
+                        // Always use X position for rise power calculation
+                        TF1* FitResult = FitPeakToTrace(TraceGraph, 0.0, TraceGraph->GetN(),
+                                                      ChannelIter->second.first, Results.PosX);
                         auto AnodeParams = ExtractAnodeFitParameters(FitResult);
                         if (AnodeParams)
                         {
@@ -559,9 +504,7 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Lon
                     }
                     catch (const std::exception& Error)
                     {
-                        std::cerr << "Fitting error for " << ChannelIter->second.first
-                                 << " in event " << Entry << ": " << Error.what() << std::endl;
-                        ValidFits = false;
+                        throw std::runtime_error(Error.what());
                     }
                 }
             }
