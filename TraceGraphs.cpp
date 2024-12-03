@@ -242,7 +242,7 @@ void SaveTraceGraphsWithFit(TTree *TreeInput, const Long64_t Entry, const char *
                     {
                         // Always use X position for rise power calculation
                         TF1* FitResult = FitPeakToTrace(TraceGraph, 0, TraceGraph->GetN(),
-                                                      ChannelIter->second.first, PositionX);
+                                                      ChannelIter->second.first, PositionX, PositionY);
                         FitResult->SetLineColor(kRed);
                         FitResult->SetLineWidth(5);
                         FitResult->SetNpx(2000);
@@ -490,7 +490,7 @@ std::optional<AnalysisResults> GetEventFitParameters(TTree* TreeInput, const Lon
                         //std::cout << "Position: " << Results.PosX << std::endl;
                         // Always use X position for rise power calculation
                         TF1* FitResult = FitPeakToTrace(TraceGraph, 0.0, TraceGraph->GetN(),
-                                                      ChannelIter->second.first, Results.PosX);
+                                                      ChannelIter->second.first, Results.PosX, Results.PosY);
                         auto AnodeParams = ExtractAnodeFitParameters(FitResult);
                         if (AnodeParams)
                         {

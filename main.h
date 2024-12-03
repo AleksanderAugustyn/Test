@@ -102,7 +102,7 @@ Double_t AnodePeakFunction(const Double_t *X, const Double_t *Parameters);
 
 TF1 *FitPeakToTrace(TGraph *TraceGraph, Double_t FitRangeStart,
                     Double_t FitRangeEnd, const std::string &Channel,
-                    Double_t Position);
+                    Double_t PosX, Double_t PosY);
 
 Double_t DynodePeakFunction(const Double_t *X, const Double_t *Parameters);
 

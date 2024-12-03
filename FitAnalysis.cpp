@@ -1,6 +1,16 @@
 #include <TF1.h>
 #include <TGraph.h>
+#include <TH2D.h>
+#include <TFile.h>
+#include <TMath.h>
+#include <TString.h>
+#include <TSystem.h>
+#include <TTree.h>
+
 #include <iostream>
+#include <map>
+
+#include "main.h"
 
 // Define polynomial coefficients struct for rise power functions
 struct RisePowerCoefficients
@@ -21,7 +31,7 @@ const std::map<std::string, RisePowerCoefficients> ChannelRisePowerFits = {
     {"yb", {1.178, 0.1177, 7.531, 33.51, 1235.0, 0.2512}}
 };
 
-Double_t CalculateRisePower(const std::string& Channel, const Double_t Position)
+Double_t CalculateRisePower(const std::string &Channel, const Double_t Position)
 {
     if (ChannelRisePowerFits.find(Channel) == ChannelRisePowerFits.end())
     {
@@ -34,7 +44,7 @@ Double_t CalculateRisePower(const std::string& Channel, const Double_t Position)
         throw std::runtime_error("Invalid X position: " + std::to_string(Position));
     }
 
-    const auto&[Offset, Linear, Quadratic, Cubic, Quartic, Center] = ChannelRisePowerFits.at(Channel);
+    const auto &[Offset, Linear, Quadratic, Cubic, Quartic, Center] = ChannelRisePowerFits.at(Channel);
     const Double_t X = Position - Center;
 
     return Offset +
@@ -73,44 +83,100 @@ Double_t AnodePeakFunction(const Double_t *X, const Double_t *Parameters)
     return Parameters[5] + Parameters[0] * Rise * Decay;
 }
 
-/**
- * Modified version of FitPeakToTrace that uses position information to constrain rise power
- * @param TraceGraph Pointer to the graph containing the trace
- * @param FitRangeStart Start of the fit range
- * @param FitRangeEnd End of the fit range
- * @param Channel Channel identifier (xa, xb, ya, yb)
- * @param Position X or Y position depending on the channel
- * @return Pointer to the fitted function
- */
-TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart,
-                    const Double_t FitRangeEnd, const std::string& Channel,
-                    const Double_t Position)
+class RiseTimeMapManager
+{
+private:
+    std::map<std::string, TH2D *> RiseTimeMaps;
+    bool IsInitialized = false;
+
+public:
+    RiseTimeMapManager()
+    {
+        Initialize();
+    }
+
+    ~RiseTimeMapManager()
+    {
+        // ROOT handles cleanup
+        RiseTimeMaps.clear();
+    }
+
+    void Initialize()
+    {
+        if (IsInitialized)
+            return;
+
+        TFile *MapFile = TFile::Open("rise_time_maps.root", "READ");
+        if (!MapFile || MapFile->IsZombie())
+        {
+            std::cerr << "Failed to open rise time maps file" << std::endl;
+            return;
+        }
+
+        const std::vector<std::string> Channels = {"xa", "xb", "ya", "yb"};
+        for (const auto &Channel: Channels)
+        {
+            const std::string MapName = Channel + "_rise_time_map";
+            auto *Map = dynamic_cast<TH2D *>(MapFile->Get(MapName.c_str()));
+            if (Map)
+            {
+                RiseTimeMaps[Channel] = Map;
+            }
+            else
+            {
+                std::cerr << "Failed to load map for channel " << Channel << std::endl;
+            }
+        }
+
+        IsInitialized = true;
+    }
+
+    Double_t GetRiseTime(const std::string &Channel, const Double_t X, const Double_t Y)
+    {
+        if (!IsInitialized || RiseTimeMaps.find(Channel) == RiseTimeMaps.end())
+        {
+            return 3.0; // Default value if map not available
+        }
+
+        TH2D *Map = RiseTimeMaps[Channel];
+        const Int_t Bin = Map->FindBin(X, Y);
+        const Double_t RiseTime = Map->GetBinContent(Bin);
+
+        return RiseTime > 0 ? RiseTime : 3.0; // Return default if bin is empty
+    }
+};
+
+// Create a global instance
+RiseTimeMapManager RiseTimeManager;
+
+// Modify the FitPeakToTrace function
+TF1 *FitPeakToTrace(TGraph *TraceGraph, const Double_t FitRangeStart,
+                    const Double_t FitRangeEnd, const std::string &Channel = "",
+                    const Double_t PosX = -1, const Double_t PosY = -1)
 {
     if (!TraceGraph)
     {
         throw std::runtime_error("Invalid graph pointer");
     }
 
-    // Create the fit function
     static int FitCounter = 0;
     const TString FitName = TString::Format("PeakFit_%d", FitCounter++);
     const auto FitFunc = new TF1(FitName, AnodePeakFunction, FitRangeStart, FitRangeEnd, 6);
 
-    // Set parameter names
+    // Parameter setup code...
     FitFunc->SetParName(0, "Amplitude");
     FitFunc->SetParName(1, "PeakPosition");
     FitFunc->SetParName(2, "DecayConstant");
     FitFunc->SetParName(3, "RiseTimeConstant");
-    FitFunc->SetParName(4, "RisePower");
+    FitFunc->SetParName(4, "RiseTimePower");
     FitFunc->SetParName(5, "Baseline");
 
-    // Find approximate parameters
+    // Find initial parameters
     Double_t MaxY = -1e9;
     Double_t MaxX = 0;
     Double_t BaselineValue = 0;
     Int_t BaselineSamples = 0;
 
-    // Use first ~20 points for baseline estimation
     constexpr Int_t BaselinePoints = 20;
     for (Int_t i = 0; i < TMath::Min(BaselinePoints, TraceGraph->GetN()); i++)
     {
@@ -121,7 +187,6 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart,
     }
     BaselineValue /= BaselineSamples;
 
-    // Calculate baseline RMS for better constraints
     Double_t BaselineRMS = 0;
     for (Int_t i = 0; i < BaselineSamples; i++)
     {
@@ -131,7 +196,6 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart,
     }
     BaselineRMS = TMath::Sqrt(BaselineRMS / BaselineSamples);
 
-    // Find peak and estimate rise time
     Double_t RiseStartX = 0;
     Bool_t RiseStartFound = false;
     const Double_t RiseThreshold = BaselineValue + 10 * BaselineRMS;
@@ -154,47 +218,58 @@ TF1* FitPeakToTrace(TGraph* TraceGraph, const Double_t FitRangeStart,
         }
     }
 
-    // Estimate decay time constant
-    Double_t DecayEndX = MaxX;
+    [[maybe_unused]] Double_t DecayEndX = MaxX;
     for (auto i = static_cast<Int_t>(MaxX); i < TraceGraph->GetN(); i++)
     {
         Double_t X, Y;
         TraceGraph->GetPoint(i, X, Y);
-        if (Y <= BaselineValue + (MaxY - BaselineValue) * 1/M_E)  // 1/e decay point
+        if (Y <= BaselineValue + (MaxY - BaselineValue) * 1 / M_E)
         {
             DecayEndX = X;
             break;
         }
     }
-    const Double_t EstimatedDecayConstant = DecayEndX - MaxX;
-    const Double_t EstimatedRiseTime = MaxX - RiseStartX;
+
+    // const Double_t EstimatedDecayConstant = DecayEndX - MaxX;
+    constexpr Double_t EstimatedDecayConstant = 28.00;
+
+    // Get rise time from map if position is provided
+    Double_t EstimatedRiseTime;
+    if (!Channel.empty() && PosX >= 0 && PosY >= 0)
+    {
+        EstimatedRiseTime = RiseTimeManager.GetRiseTime(Channel, PosX, PosY);
+    }
+    else
+    {
+        EstimatedRiseTime = MaxX - RiseStartX;
+    }
 
     // Calculate expected rise power from position
-    const Double_t ExpectedRisePower = CalculateRisePower(Channel, Position);
+    const Double_t ExpectedRisePower = CalculateRisePower(Channel, PosX);
     constexpr Double_t RisePowerTolerance = 0.05; // Allow some variation around the expected value
 
-    // Set initial parameters with improved estimates
-    FitFunc->SetParameter(0, MaxY - BaselineValue);  // Amplitude
-    FitFunc->SetParameter(1, MaxX);                  // Peak position
-    FitFunc->SetParameter(2, EstimatedDecayConstant);// Decay constant
-    FitFunc->SetParameter(3, EstimatedRiseTime);     // Rise time constant
-    FitFunc->SetParameter(4, ExpectedRisePower);     // Rise time power (from position)
-    FitFunc->SetParameter(5, BaselineValue);         // Baseline
+    // Set parameters with map-based estimates
+    FitFunc->SetParameter(0, MaxY - BaselineValue);
+    FitFunc->SetParameter(1, MaxX);
+    FitFunc->SetParameter(2, EstimatedDecayConstant);
+    FitFunc->SetParameter(3, EstimatedRiseTime);
+    FitFunc->SetParameter(4, ExpectedRisePower);
+    FitFunc->SetParameter(5, BaselineValue);
+
+    // Fix the decay constant
+    FitFunc->FixParameter(2, EstimatedDecayConstant);
 
     // Set parameter limits
     FitFunc->SetParLimits(0, 0.5 * (MaxY - BaselineValue), 1.2 * MaxY);
     FitFunc->SetParLimits(1, MaxX - 30, MaxX + 30);
-    FitFunc->SetParLimits(2, 1, 200);
-    FitFunc->SetParLimits(3, 1, 100);
-    // Constrain rise power around the expected value from position
-    FitFunc->SetParLimits(4, ExpectedRisePower - RisePowerTolerance,
-                            ExpectedRisePower + RisePowerTolerance);
-    FitFunc->SetParLimits(5, BaselineValue - 5*BaselineRMS, BaselineValue + 5*BaselineRMS);
+    //FitFunc->SetParLimits(2, 0.9 * EstimatedDecayConstant, 1.1 * EstimatedDecayConstant);
+    FitFunc->SetParLimits(3, 0.9 * EstimatedRiseTime, 1.1 * EstimatedRiseTime);
+    FitFunc->SetParLimits(4, ExpectedRisePower - RisePowerTolerance, ExpectedRisePower + RisePowerTolerance);
+    FitFunc->SetParLimits(5, BaselineValue - 5 * BaselineRMS, BaselineValue + 5 * BaselineRMS);
 
     // Perform the fit
-    [[maybe_unused]] const Int_t FitStatus = TraceGraph->Fit(FitFunc, "QR");
+    TraceGraph->Fit(FitFunc, "QR");
 
-    // Set fit function style
     FitFunc->SetLineColor(kRed);
     FitFunc->SetLineWidth(100);
     FitFunc->SetNpx(2000);

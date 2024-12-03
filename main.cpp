@@ -7,13 +7,25 @@
 #include <TTreeReaderValue.h>
 
 #include "main.h"
-
+#include "RiseTimeExtractor.cpp"
 
 int main()
 {
     try
     {
         LoadRequiredLibraries();
+
+        if (0)
+        {
+            RiseTimeMapExtractor Extractor;
+            Extractor.Process("./position_analysis/position_fit_analysis.root");
+
+            std::cout << "\nProcessing completed successfully:" << std::endl;
+            std::cout << "- Rise time maps saved to rise_time_maps.root" << std::endl;
+            std::cout << "- Visualization saved to rise_time_maps.png" << std::endl;
+
+            return 0;
+        }
 
         // Analyze only past runs
         if (0)
@@ -58,11 +70,46 @@ int main()
 
         // Define run ranges to process
         const std::vector<std::pair<Int_t, Int_t> > RunsToProcess = {
+            {55, 20}, {55, 21},
+            {55, 22}, {55, 23},
+            {55, 24}, {55, 25},
+            {55, 26}, {55, 27},
+            {55, 28}, {55, 29},
+            {54, 20}, {54, 21},
+            {54, 22}, {54, 23},
+            {54, 24}, {54, 25},
+            {54, 26}, {54, 27},
+            {54, 28}, {54, 29},
+            {53, 20}, {53, 21},
+            {53, 22}, {53, 23},
+            {53, 24}, {53, 25},
+            {53, 26}, {53, 27},
+            {53, 28}, {53, 29},
+            {120, 31}, {120, 32},
+            {120, 33}, {120, 34},
+            {120, 35}, {120, 36},
+            {120, 37}, {120, 38},
+            {120, 39}, {120, 40},
             {119, 31}, {119, 32},
             {119, 33}, {119, 34},
             {119, 35}, {119, 36},
             {119, 37}, {119, 38},
             {119, 39}, {119, 40},
+            {118, 31}, {118, 32},
+            {118, 33}, {118, 34},
+            {118, 35}, {118, 36},
+            {118, 37}, {118, 38},
+            {118, 39}, {118, 40},
+            {117, 31}, {117, 32},
+            {117, 33}, {117, 34},
+            {117, 35}, {117, 36},
+            {117, 37}, {117, 38},
+            {117, 39}, {117, 40},
+            {116, 31}, {116, 32},
+            {116, 33}, {116, 34},
+            {116, 35}, {116, 36},
+            {116, 37}, {116, 38},
+            {116, 39}, {116, 40}
         };
 
         Int_t ProcessedFiles = 0;
@@ -133,12 +180,12 @@ int main()
                     Results.push_back(*EventResults);
                 }
 
-                // Break after processing 1000 events, for testing purposes
-                /*if (EventCounter >= 1000)
-                {
-                    std::cout << "Finished processing event " << EventCounter << std::endl;
-                    break;
-                }*/
+                // Break after processing N events, for testing purposes
+                // if (EventCounter >= 1000)
+                // {
+                //     std::cout << "Finished processing event " << EventCounter << std::endl;
+                //     break;
+                // }
             }
             std::cout << "\nFinished processing events." << std::endl;
 
